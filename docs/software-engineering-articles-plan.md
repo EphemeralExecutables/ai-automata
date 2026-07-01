@@ -1,14 +1,6 @@
-# Plan: Automated Daily Software Engineering Articles Summary
+# Plan: Automated Daily Software Engineering Articles Summary (via agy CLI)
 
-This plan outlines the design and implementation of an automated daily pipeline that fetches software engineering articles from various tech RSS feeds, summarizes them using Gemini (via the `google-genai` SDK and OAuth 2.0), and writes the output to a local directory and uploads it directly to Google Drive.
-
-## Goal Description
-The objective is to run a daily, headless cron job on a Linux machine that:
-1. Parses predefined technology and software engineering RSS feeds.
-2. Authenticates headlessly with Gemini using a cached OAuth 2.0 `token.json` generated from a Google Cloud Desktop App credentials file (`client_secret.json`).
-3. Sends the compiled feed content to the Gemini API (`gemini-2.5-flash`) for a structured morning summary.
-4. Appends/writes the markdown-formatted summary to a local synced file.
-5. Uploads the generated summary directly to a specified Google Drive folder via the Google Drive API.
+This plan outlines the design and implementation of an automated daily pipeline that fetches software engineering summaries using the Gemini model via the local `agy` CLI, and writes the output to a local directory.
 
 ---
 
@@ -39,19 +31,19 @@ The objective is to run a daily, headless cron job on a Linux machine that:
 │   └── tasks.json                       # VS Code default build task configuration (Shift-Cmd-B)
 ├── docs/
 │   ├── software-engineering-articles-plan.md
-│   ├── oauth-setup-guide.md             # OAuth setup instructions
-│   └── google-drive-setup-guide.md      # Google Drive API configuration instructions
+│   └── session-summary.md               # Session progress handoff summary
 ├── src/
 │   └── software_eng_articles/           # Dedicated package directory
-│       ├── daily_software_eng_articles.py # Renamed python pipeline module
-│       └── run_daily_summary.sh         # Relocated shell wrapper entrypoint script
+│       ├── daily_software_eng_articles.py # Python pipeline module
+│       ├── run_daily_summary.sh         # Shell wrapper execution entrypoint
+│       └── setup_daily_summary_cron.sh  # Cron installation/uninstallation utility script
 ├── test/
-│   └── test_summary.py                  # Automated validation running imports from the build/ directory
+│   └── test_summary.py                  # Automated validation running imports from build/
 ├── build/                               # Directory for compiled/built python packages (Ignored by git)
 ├── dist/                                # Directory containing built distribution wheels, wrapper script, and .env configuration
 ├── .env                                 # Local environment variables (Ignored by git)
 ├── .env.template                        # Template for local environment configuration
-├── .gitignore                           # Configured to ignore .venv, .env, token.json, build/, and client_secret.json
+├── .gitignore                           # Configured to ignore .venv, .env, build/, and dist/
 └── README.md
 ```
 
@@ -59,13 +51,9 @@ The objective is to run a daily, headless cron job on a Linux machine that:
 
 ## Proposed Changes
 
-### Dependencies
-We need to add the Google API Client library to interact with Google Drive:
-*   `google-api-python-client`
-
-### Configuration
-We will add configuration options to `.env` to support Google Drive target folder:
-*   `GD_FOLDER_ID`: The specific Google Drive folder ID where the morning summaries should be uploaded.
+### Packaging
+We will add `setup_daily_summary_cron.sh` to our packaging steps:
+*   Update `setup.py` to copy `setup_daily_summary_cron.sh` from the source package to `dist/setup_daily_summary_cron.sh` and make it executable (`chmod +x`).
 
 ---
 
@@ -73,70 +61,68 @@ We will add configuration options to `.env` to support Google Drive target folde
 
 ### Automated/Local Tests
 We will verify each module programmatically:
-1. Re-build the package with the new package path structure.
-2. Update tests in `test/test_summary.py` to import from the new module layout in `build/`.
-3. Run `pytest` inside the virtual environment.
+1. Re-build the package.
+2. Run `pytest` inside the virtual environment.
 
 ### Manual Verification
-1. Open the project inside VS Code and verify that pressing `Shift-Cmd-B` initiates a clean build.
-2. Execute the summary wrapper script and confirm that the file is successfully created locally in `dist/` and uploaded to the Google Drive folder.
+> [!IMPORTANT]
+> Manual testing of the cron setup script will temporarily install the job into your system's crontab for validation, but the verification plan guarantees it is immediately uninstalled/removed afterward to return your system to a clean state.
+
+1. Execute `dist/setup_daily_summary_cron.sh` to register the cron task.
+2. Run `crontab -l` to verify that the cron entry exists.
+3. Run `dist/setup_daily_summary_cron.sh --uninstall` to remove the cron task.
+4. Run `crontab -l` to verify that the cron entry was removed and the user's crontab is clean.
 
 ---
 
 ## Implementation Runsheet
 
 ### Phase 1: Environment, Isolation & Configuration (Completed)
-*   Create a virtual environment: `python3 -m venv .venv`.
-*   Update [`.gitignore`](file:///Users/mattswart/Source/Python/ai-automata/.gitignore) to exclude `.env`, `.venv/`, and `token.json`.
-*   Create [`requirements.txt`](file:///Users/mattswart/Source/Python/ai-automata/requirements.txt) with all required library versions.
-*   Activate the virtual environment (`source .venv/bin/activate`) and install dependencies: `pip install -r requirements.txt`.
-*   Create [`.env.template`](file:///Users/mattswart/Source/Python/ai-automata/.env.template) defining feed lists, file paths, and model configurations.
-*   Create a local `.env` file containing actual values for local testing.
+*   Create a virtual environment.
+*   Update `.gitignore`.
+*   Configure `requirements.txt`.
+*   Create `.env.template` and `.env` containing prompt details.
 
 ### Phase 2: Build Pipeline & Test Setup (Completed)
-*   Create build configuration in `pyproject.toml` to package the `src/` modules.
+*   Create build configuration in `pyproject.toml`.
 *   Add `build/` and `dist/` to `.gitignore`.
-*   Write [`test_summary.py`](file:///Users/mattswart/Source/Python/ai-automata/test/test_summary.py) test cases to verify pipeline functions.
-*   Ensure the test runner runs tests directly against the modules located in `build/`.
+*   Write `test_summary.py` test cases.
 
 ### Phase 3: Persistence, Wrapper & Sync Output (Completed)
 *   Configure file exporting to the configured output path.
-*   Create the shell wrapper script [`run_daily_summary.sh`](file:///Users/mattswart/Source/Python/ai-automata/run_daily_summary.sh) that activates the `.venv` and executes the `daily-summary` command.
-*   Install the package locally in editable mode (`pip install -e .`) so changes are immediately testable without rebuilds.
-*   Test end-to-end execution of the wrapper.
+*   Create the shell wrapper script.
+*   Install the package locally in editable mode.
+*   Test wrapper execution.
 
 ### Phase 4: Refactor & Relocate Files (Completed)
 *   Create package directory `src/software_eng_articles/`.
-*   Move `run_daily_summary.sh` to the new folder and update relative path resolver inside it.
-*   Move and rename `src/daily_summary.py` to `src/software_eng_articles/daily_software_eng_articles.py`.
-*   Update [`pyproject.toml`](file:///Users/mattswart/Source/Python/ai-automata/pyproject.toml) to map the new package, specify package entrypoint, and include `.sh` wrapper script in package data.
-*   Update imports inside [`test/test_summary.py`](file:///Users/mattswart/Source/Python/ai-automata/test/test_summary.py).
-*   Clean build, extract wheel to `build/` and verify package contents.
+*   Move `run_daily_summary.sh` to the new folder.
+*   Move and rename script to `src/software_eng_articles/daily_software_eng_articles.py`.
+*   Update `pyproject.toml` package mapping.
+*   Update imports inside `test_summary.py`.
+*   Clean build, extract wheel and verify package contents.
 
 ### Phase 5: Auto-Install Wheel in Wrapper (Completed)
-*   Update [`run_daily_summary.sh`](file:///Users/mattswart/Source/Python/ai-automata/src/software_eng_articles/run_daily_summary.sh) to check the execution folder for a wheel file (`*.whl`) and auto-install it.
-*   Test execution logic in `dist/`.
+*   Update wrapper to auto-install wheel when missing from the venv.
 
 ### Phase 6: Copy Config and VS Code Integration Setup (Completed)
-*   Update [`setup.py`](file:///Users/mattswart/Source/Python/ai-automata/setup.py) to copy `.env` to `dist/`.
-*   Create [`.vscode/tasks.json`](file:///Users/mattswart/Source/Python/ai-automata/.vscode/tasks.json) defining the default build task.
-*   Perform clean build and verify copying actions.
+*   Update `setup.py` to copy `.env` to `dist/`.
+*   Create `.vscode/tasks.json` default build task mapping.
 
-### Phase 7: Credentials & Handshake Setup
-*   Implement OAuth initialization and silent token refreshes inside `daily_software_eng_articles.py`.
-*   Guide user to follow [oauth-setup-guide.md](file:///Users/mattswart/Source/Python/ai-automata/docs/oauth-setup-guide.md) to download `client_secret.json` and generate `token.json`.
+### Phase 7: Integrate agy CLI for Direct Prompt Execution (Completed)
+*   Remove all Google Cloud console, OAuth client, Google Drive, and RSS Feed parsing dependencies/credentials (removing `feedparser`).
+*   Update `.env` and `.env.template` to replace `RSS_FEEDS` with the `PROMPT` configuration.
+*   Rework `daily_software_eng_articles.py` to load `PROMPT` from environment and execute `agy --print "$PROMPT"` directly via subprocess.
+*   Update `test/test_summary.py` to assert correct subprocess prompt passing and stdout saving.
 
-### Phase 8: Google Drive Integration
-*   Enable Google Drive API in Google Cloud Console.
-*   Expand OAuth scopes in `daily_software_eng_articles.py` to include `https://www.googleapis.com/auth/drive.file`.
-*   Add `google-api-python-client` to `requirements.txt` and `pyproject.toml`.
-*   Write Google Drive file creation/upload helper inside `daily_software_eng_articles.py` using `googleapiclient.discovery`.
-*   Write [google-drive-setup-guide.md](file:///Users/mattswart/Source/Python/ai-automata/docs/google-drive-setup-guide.md) documentation.
+### Phase 8: Dynamic Timestamped Output File (Completed)
+*   Modify `daily_software_eng_articles.py` to format output filenames dynamically using the current system date and time (`YYYYMMDD_HHMM` format), transforming `morning_summary.md` to `morning_summary_20260701_2145.md`.
+*   Update tests in `test/test_summary.py` to confirm the timestamp formatting works.
+*   Clean build, extract, and execute wrapper script to verify timestamped file generation inside `dist/`.
 
-### Phase 9: Feed Processing & API Integration
-*   Write RSS parsing logic to extract articles.
-*   Format feed outputs into a concise context payload.
-*   Integrate SDK call to request the summary from the configured model (e.g. `gemini-2.5-flash`).
-
-### Phase 10: Cron Orchestration
-*   Define the exact daily cron schedule command for execution on the target Linux system, pointing to the relocated shell wrapper script.
+### Phase 9: Cron Orchestration Setup Script
+*   Write `src/software_eng_articles/setup_daily_summary_cron.sh` to:
+    1. Resolve its active execution directory (which will be `dist/` when deployed).
+    2. Support installing a default daily execution schedule (running daily at 8:00 AM, `0 8 * * *`) when run without arguments.
+    3. Support uninstalling the cron job (removing the entry from `crontab`) when invoked with the `--uninstall` flag.
+*   Update [`setup.py`](file:///Users/mattswart/Source/Python/ai-automata/setup.py) to automatically copy and `chmod +x` the script to `dist/setup_daily_summary_cron.sh`.

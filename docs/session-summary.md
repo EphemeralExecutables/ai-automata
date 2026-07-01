@@ -6,55 +6,40 @@ This document summarizes the current status of the daily software engineering ar
 
 ## 1. Outstanding Tasks & Handoff Objectives
 
-### A. One-Time Manual OAuth Handshake (Phase 7)
-*   **Status**: Code fully implemented & tested. The user needs to download their client secrets.
-*   **Next Steps**:
-    1.  User follows [oauth-setup-guide.md](file:///Users/mattswart/Source/Python/ai-automata/docs/oauth-setup-guide.md) to obtain `client_secret.json`.
-    2.  Place the file at `/Users/mattswart/Source/Python/ai-automata/client_secret.json`.
-    3.  Run `./dist/run_daily_summary.sh` to trigger the interactive browser flow once to generate `token.json`.
-
-### B. Google Drive Integration (Phase 8 - Next Coding Task)
-*   **Objective**: Upload the daily summary directly to a Google Drive folder via the Drive API.
-*   **Next Steps**:
-    1.  Add `google-api-python-client` package to [`requirements.txt`](file:///Users/mattswart/Source/Python/ai-automata/requirements.txt) and [`pyproject.toml`](file:///Users/mattswart/Source/Python/ai-automata/pyproject.toml).
-    2.  Expand the scope variable inside [`daily_software_eng_articles.py`](file:///Users/mattswart/Source/Python/ai-automata/src/software_eng_articles/daily_software_eng_articles.py):
-        ```python
-        SCOPES = [
-            'https://www.googleapis.com/auth/generative-language',
-            'https://www.googleapis.com/auth/drive.file'
-        ]
-        ```
-    3.  Implement a helper using `googleapiclient.discovery.build("drive", "v3", credentials=creds)` to upload/update the summary file.
-    4.  Expose `GD_FOLDER_ID` in `.env` to target a specific Drive folder.
-    5.  Create a detailed setup guide `docs/google-drive-setup-guide.md`.
-
-### C. Feed Processing & Gemini API Integration (Phase 9)
-*   **Objective**: Parse real feeds defined in `.env` and use `gemini-2.5-flash` to summarize them.
-*   **Next Steps**:
-    1.  Write RSS parsing logic using `feedparser`.
-    2.  Format feed outputs into a concise text payload.
-    3.  Call `client.models.generate_content` using the Gemini SDK.
-
-### D. Cron Orchestration (Phase 10)
+### A. Cron Orchestration Setup Script (Phase 9)
 *   **Objective**: Configure the daily cron job on the target headless Linux machine.
+*   **Next Steps**:
+    1.  **Code Updates**:
+        *   Create [`src/software_eng_articles/setup_daily_summary_cron.sh`](file:///Users/mattswart/Source/Python/ai-automata/src/software_eng_articles/setup_daily_summary_cron.sh) with `--uninstall` support.
+        *   Update [`setup.py`](file:///Users/mattswart/Source/Python/ai-automata/setup.py) to copy `setup_daily_summary_cron.sh` to `dist/setup_daily_summary_cron.sh` on build.
+    2.  **Manual Verification**:
+        *   Run clean build.
+        *   Execute `dist/setup_daily_summary_cron.sh` to register.
+        *   Inspect `crontab -l`.
+        *   Execute `dist/setup_daily_summary_cron.sh --uninstall` to remove.
+        *   Confirm crontab is cleaned.
 
 ---
 
 ## 2. Work Accomplished in This Session
 
 *   **Phase 4 (Refactoring) Completed**:
-    *   Moved files into standard package structure: [`src/software_eng_articles/`](file:///Users/mattswart/Source/Python/ai-automata/src/software_eng_articles/).
-    *   Renamed python entrypoint to `daily_software_eng_articles.py` to preserve module importing in unit tests (avoiding hyphen syntax errors).
+    *   Moved files into package structure: [`src/software_eng_articles/`](file:///Users/mattswart/Source/Python/ai-automata/src/software_eng_articles/).
+    *   Renamed python entrypoint to `daily_software_eng_articles.py`.
     *   Configured [`setup.py`](file:///Users/mattswart/Source/Python/ai-automata/setup.py) to automatically copy `.env` and `run_daily_summary.sh` into `dist/` during python package builds.
-    *   Updated the relative path resolver in `run_daily_summary.sh` to dynamically search upward for `pyproject.toml`, resolving correctly whether executed in source or build directory.
-    *   Kept project root clean; running `./dist/run_daily_summary.sh` outputs files strictly in `dist/morning_summary.md`.
+    *   Updated path resolver in `run_daily_summary.sh` to search upward for `pyproject.toml`.
+    *   Running `./dist/run_daily_summary.sh` outputs files strictly in `dist/` and keeps the project root clean.
 *   **Phase 5 (Auto-Install) Completed**:
-    *   Added conditional wheel checks to the shell wrapper. It only triggers `pip install` on the local `.whl` package if `daily-summary` is not already registered in the virtual environment.
+    *   Added conditional wheel checks to the shell wrapper. It only triggers `pip install` on the local `.whl` package if `daily-summary` is missing from the active virtual environment.
 *   **Phase 6 (VS Code Integration) Completed**:
     *   Added [`.vscode/tasks.json`](file:///Users/mattswart/Source/Python/ai-automata/.vscode/tasks.json) mapping package builds to the default build group. Pressing **`Shift-Cmd-B`** clean-compiles the python project and populates `dist/`.
-*   **Phase 7 (OAuth Auth Code) Completed**:
-    *   Implemented full OAuth handshake, token caching, validation, and silent background refreshes in `daily_software_eng_articles.py`.
-    *   Wrote Mock testing suites in [`test/test_summary.py`](file:///Users/mattswart/Source/Python/ai-automata/test/test_summary.py) to test token loading, client creation, and missing file error raises. Verified that all 5 tests pass successfully.
+*   **Phase 7 (Integrate agy CLI) Completed**:
+    *   Switched model inference to use local `agy --print` CLI, removing Google Cloud API Console keys, client secrets, and OAuth dependencies.
+    *   Updated `.env` and `.env.template` to use the `PROMPT` config parameter.
+    *   Verified end-to-end execution of `run_daily_summary.sh` capturing model summaries into a local output file.
+*   **Phase 8 (Dynamic Timestamped Output File) Completed**:
+    *   Updated the python script to parse the `OUTPUT_PATH` config and dynamically format the output filename using the current system date and time (`YYYYMMDD_HHMM` format), e.g., `morning_summary_20260701_2147.md`.
+    *   Added unit tests patch verifying path parsing and executed clean packaging and manual wrapper tests successfully.
 
 ---
 
@@ -62,13 +47,9 @@ This document summarizes the current status of the daily software engineering ar
 
 ### Environment File (`.env`)
 ```ini
-RSS_FEEDS=https://news.ycombinator.com/rss,https://netflixtechblog.com/feed,https://blog.uber.com/category/engineering/feed,https://aws.amazon.com/blogs/architecture/feed
-MODEL_NAME=gemini-2.5-flash
+PROMPT="Find me the top 2 c++ articles of today and summarise into a MD (markdown) and output to stdout. include references to the original articles"
 OUTPUT_PATH=./morning_summary.md
-CLIENT_SECRET_PATH=../client_secret.json
-TOKEN_PATH=../token.json
 ```
-*(Paths resolve to project root when run inside the `dist/` directory).*
 
 ### Active Workspace Layout
 ```text
@@ -77,7 +58,6 @@ TOKEN_PATH=../token.json
 │   └── tasks.json                       # Default build task (Shift-Cmd-B)
 ├── docs/
 │   ├── software-engineering-articles-plan.md
-│   ├── oauth-setup-guide.md
 │   └── session-summary.md               # This file
 ├── src/
 │   └── software_eng_articles/
@@ -87,5 +67,5 @@ TOKEN_PATH=../token.json
 │   └── test_summary.py                  # Pytest verification suite
 ├── setup.py                             # Custom packaging and distribution copies
 ├── pyproject.toml                       # Python package details
-└── .gitignore                           # Excludes venv, client secrets, and cache tokens
+└── .gitignore                           # Excludes venv, build/, and dist/
 ```

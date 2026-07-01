@@ -5,15 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ai-automata"
 version = "0.1.0"
-description = "Automated daily software engineering articles summarizer pipeline"
+description = "Automated daily software engineering articles summarizer pipeline via agy CLI"
 readme = "README.md"
 authors = [
     { name = "Matt Swart" }
 ]
 requires-python = ">=3.8"
 dependencies = [
-    "google-genai",
-    "google-auth-oauthlib",
     "feedparser",
     "python-dotenv",
 ]
