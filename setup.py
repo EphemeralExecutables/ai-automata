@@ -1,67 +1,62 @@
 import os
+import sys
 import shutil
+import subprocess
 from setuptools import setup
 from setuptools.command.build_py import build_py
 
+
 class CustomBuildPy(build_py):
     def run(self):
-        # First, run the standard build
+        # --- Step 1: Run tests before building — abort if any fail ---
+        print("Running tests before build...")
+        result = subprocess.run(
+            [sys.executable, "-m", "pytest", "test/", "-v"],
+            cwd=os.path.abspath("."),
+        )
+        if result.returncode != 0:
+            raise SystemExit("❌ Tests failed — aborting build.")
+        print("✅ All tests passed — proceeding with build.\n")
+
+        # --- Step 2: Standard build ---
         super().run()
-        
-        # Get the original workspace root from the PWD env variable (POSIX shells set this)
-        workspace_root = os.environ.get('PWD')
+
+        # Get the workspace root
+        workspace_root = os.environ.get("PWD")
         if not workspace_root or not os.path.exists(os.path.join(workspace_root, "pyproject.toml")):
-            # Fallback to current directory if PWD is not set or invalid
             workspace_root = os.path.abspath(".")
-            
+
         dist_dir = os.path.join(workspace_root, "dist")
         os.makedirs(dist_dir, exist_ok=True)
-        
-        # 1. Copy the shell script to the dist/ directory
-        src_sh = os.path.join(workspace_root, "src", "software_eng_articles", "run_daily_summary.sh")
-        dest_sh = os.path.join(dist_dir, "run_daily_summary.sh")
-        
-        if os.path.exists(src_sh):
-            shutil.copy(src_sh, dest_sh)
-            os.chmod(dest_sh, 0o755)  # Make it executable in dist/
-            print(f"Post-Build: Copied and chmod+x wrapper script to {dest_sh}")
+
+        # --- Step 3: Copy shell scripts to dist/ ---
+        scripts = [
+            "run_daily_summary.sh",
+            "setup_daily_summary_cron.sh",
+            "setup_env.sh",
+        ]
+        for script in scripts:
+            src = os.path.join(workspace_root, "src", "software_eng_articles", script)
+            dest = os.path.join(dist_dir, script)
+            if os.path.exists(src):
+                shutil.copy(src, dest)
+                os.chmod(dest, 0o755)
+                print(f"Post-Build: Copied and chmod+x {script} to {dest}")
+            else:
+                print(f"Post-Build Warning: {script} not found at {src}")
+
+        # --- Step 4: Copy prompts.toml.template to dist/ ---
+        src_tmpl = os.path.join(workspace_root, "prompts.toml.template")
+        dest_tmpl = os.path.join(dist_dir, "prompts.toml.template")
+        if os.path.exists(src_tmpl):
+            shutil.copy(src_tmpl, dest_tmpl)
+            print(f"Post-Build: Copied prompts.toml.template to {dest_tmpl}")
         else:
-            print(f"Post-Build Warning: Source shell script not found at {src_sh}")
-            
-        # 2. Copy the cron setup script to the dist/ directory
-        src_cron = os.path.join(workspace_root, "src", "software_eng_articles", "setup_daily_summary_cron.sh")
-        dest_cron = os.path.join(dist_dir, "setup_daily_summary_cron.sh")
-        
-        if os.path.exists(src_cron):
-            shutil.copy(src_cron, dest_cron)
-            os.chmod(dest_cron, 0o755)  # Make it executable in dist/
-            print(f"Post-Build: Copied and chmod+x cron setup script to {dest_cron}")
-        else:
-            print(f"Post-Build Warning: Source cron setup script not found at {src_cron}")
-            
-        # 3. Copy the environment setup script to the dist/ directory
-        src_setup_env = os.path.join(workspace_root, "src", "software_eng_articles", "setup_env.sh")
-        dest_setup_env = os.path.join(dist_dir, "setup_env.sh")
-        
-        if os.path.exists(src_setup_env):
-            shutil.copy(src_setup_env, dest_setup_env)
-            os.chmod(dest_setup_env, 0o755)  # Make it executable in dist/
-            print(f"Post-Build: Copied and chmod+x environment setup script to {dest_setup_env}")
-        else:
-            print(f"Post-Build Warning: Source environment setup script not found at {src_setup_env}")
-            
-        # 4. Copy the .env configuration file to the dist/ directory
-        src_env = os.path.join(workspace_root, ".env")
-        dest_env = os.path.join(dist_dir, ".env")
-        
-        if os.path.exists(src_env):
-            shutil.copy(src_env, dest_env)
-            print(f"Post-Build: Copied configuration (.env) file to {dest_env}")
-        else:
-            print(f"Post-Build Warning: Source .env configuration file not found at {src_env}")
+            print(f"Post-Build Warning: prompts.toml.template not found at {src_tmpl}")
+
 
 setup(
     cmdclass={
-        'build_py': CustomBuildPy,
+        "build_py": CustomBuildPy,
     }
 )
