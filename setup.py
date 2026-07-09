@@ -39,7 +39,18 @@ class CustomBuildPy(build_py):
         else:
             print(f"Post-Build Warning: Source cron setup script not found at {src_cron}")
             
-        # 3. Copy the .env configuration file to the dist/ directory
+        # 3. Copy the environment setup script to the dist/ directory
+        src_setup_env = os.path.join(workspace_root, "src", "software_eng_articles", "setup_env.sh")
+        dest_setup_env = os.path.join(dist_dir, "setup_env.sh")
+        
+        if os.path.exists(src_setup_env):
+            shutil.copy(src_setup_env, dest_setup_env)
+            os.chmod(dest_setup_env, 0o755)  # Make it executable in dist/
+            print(f"Post-Build: Copied and chmod+x environment setup script to {dest_setup_env}")
+        else:
+            print(f"Post-Build Warning: Source environment setup script not found at {src_setup_env}")
+            
+        # 4. Copy the .env configuration file to the dist/ directory
         src_env = os.path.join(workspace_root, ".env")
         dest_env = os.path.join(dist_dir, ".env")
         

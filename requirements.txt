@@ -1,5 +1,6 @@
 feedparser
-python-dotenv
+rich>=13.0
+tomli>=1.1.0  # only needed for Python < 3.11 (3.11+ has tomllib built-in)
 pytest
 build
 setuptools

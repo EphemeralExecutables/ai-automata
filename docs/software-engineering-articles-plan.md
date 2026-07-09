@@ -36,7 +36,8 @@ This plan outlines the design and implementation of an automated daily pipeline 
 │   └── software_eng_articles/           # Dedicated package directory
 │       ├── daily_software_eng_articles.py # Python pipeline module
 │       ├── run_daily_summary.sh         # Shell wrapper execution entrypoint
-│       └── setup_daily_summary_cron.sh  # Cron installation/uninstallation utility script
+│       ├── setup_daily_summary_cron.sh  # Cron installation/uninstallation utility script
+│       └── setup_env.sh                 # Deployment environment virtualenv and pip setup script
 ├── test/
 │   └── test_summary.py                  # Automated validation running imports from build/
 ├── build/                               # Directory for compiled/built python packages (Ignored by git)
@@ -121,8 +122,6 @@ We will verify each module programmatically:
 *   Clean build, extract, and execute wrapper script to verify timestamped file generation inside `dist/`.
 
 ### Phase 9: Cron Orchestration Setup Script
-*   Write `src/software_eng_articles/setup_daily_summary_cron.sh` to:
-    1. Resolve its active execution directory (which will be `dist/` when deployed).
-    2. Support installing a default daily execution schedule (running daily at 8:00 AM, `0 8 * * *`) when run without arguments.
-    3. Support uninstalling the cron job (removing the entry from `crontab`) when invoked with the `--uninstall` flag.
-*   Update [`setup.py`](file:///Users/mattswart/Source/Python/ai-automata/setup.py) to automatically copy and `chmod +x` the script to `dist/setup_daily_summary_cron.sh`.
+*   Write `src/software_eng_articles/setup_daily_summary_cron.sh` to support registering/unregistering the daily cron job via `--uninstall`.
+*   Write `src/software_eng_articles/setup_env.sh` to initialize the `.venv` and install the package wheel on remote boxes.
+*   Update [`setup.py`](file:///Users/mattswart/Source/Python/ai-automata/setup.py) to automatically copy and `chmod +x` both scripts to the `dist/` folder.

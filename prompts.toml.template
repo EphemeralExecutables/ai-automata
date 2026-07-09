@@ -1,0 +1,45 @@
+# prompts.toml.template
+# Copy this file to prompts.toml and customise your sections.
+# Each [section] defines an independent run configuration.
+# Run a specific section with: daily-summary --section <name>
+# e.g.  daily-summary --section cpp
+
+[cpp]
+# Path to write the generated markdown output file (supports relative paths)
+output_path = "./morning_summary_cpp.md"
+
+# The prompt sent to the agy CLI. Use triple-quoted strings for multi-line prompts.
+prompt = """Search the web for the top 2 most relevant C++ programming articles published today. 
+
+Output the results strictly as a formatted Markdown document inside a single code block (```md ... ```). 
+
+For each article, you MUST include:
+1. The exact article title.
+2. The author.
+3. The EXACT, direct URL/permalink to the specific article. (CRITICAL: Do NOT output generic root domains or homepages like "https://isocpp.org" or "https://reddit.com". 
+You must provide the full deep-link path, e.g., "https://domain.com/blog/2026/07/article-name").
+4. A 2-3 sentence summary.
+
+CRITICAL INSTRUCTIONS: Do not include any conversational filler before or after the code block. Do not simulate terminal commands. 
+Your entire response must consist solely of the requested Markdown code block."""
+
+[java]
+output_path = "./morning_summary_java.md"
+prompt = """Search the web for the top 2 most relevant Java programming articles published today. 
+
+Output the results strictly as a formatted Markdown document inside a single code block (```md ... ```). 
+
+For each article, you MUST include:
+1. The exact article title.
+2. The author.
+3. The EXACT, direct URL/permalink to the specific article. (CRITICAL: Do NOT output generic root domains or homepages like "https://isocpp.org" or "https://reddit.com". 
+You must provide the full deep-link path, e.g., "https://domain.com/blog/2026/07/article-name").
+4. A 2-3 sentence summary.
+
+CRITICAL INSTRUCTIONS: Do not include any conversational filler before or after the code block. Do not simulate terminal commands. 
+Your entire response must consist solely of the requested Markdown code block."""
+
+# Add as many sections as you like:
+# [python]
+# output_path = "./morning_summary_python.md"
+# prompt = "..."
