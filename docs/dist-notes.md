@@ -1,0 +1,1 @@
+scp ./* mattswart@macmini.local:Scripts/ai-automata
